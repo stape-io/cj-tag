@@ -95,11 +95,10 @@ function getRequestUrl() {
     requestUrl = requestUrl + '&CJEVENT=' + enc(CJEVENT);
   }
   // CJ event time
-  const eventTime =
-    data.conversionDateTime ||
-    eventData.conversionDateTime ||
-    convertTimestampToISO(getTimestampMillis());
-  requestUrl = requestUrl + '&EVENTTIME=' + enc(eventTime);
+  const eventTime = data.conversionDateTime || eventData.conversionDateTime;
+  if (eventTime) {
+    requestUrl = requestUrl + '&EVENTTIME=' + enc(eventTime);
+  }
   // CJ order ID
   const orderId =
     data.orderId ||
@@ -156,75 +155,6 @@ function getRequestUrl() {
 function enc(data) {
   data = data || '';
   return encodeUriComponent(makeString(data));
-}
-
-function convertTimestampToISO(timestamp) {
-  const secToMs = function (s) {
-    return s * 1000;
-  };
-  const minToMs = function (m) {
-    return m * secToMs(60);
-  };
-  const hoursToMs = function (h) {
-    return h * minToMs(60);
-  };
-  const daysToMs = function (d) {
-    return d * hoursToMs(24);
-  };
-  const format = function (value) {
-    return value >= 10 ? value.toString() : '0' + value;
-  };
-  const fourYearsInMs = daysToMs(365 * 4 + 1);
-  let year = 1970 + Math.floor(timestamp / fourYearsInMs) * 4;
-  timestamp = timestamp % fourYearsInMs;
-
-  while (true) {
-    let isLeapYear = !(year % 4);
-    let nextTimestamp = timestamp - daysToMs(isLeapYear ? 366 : 365);
-    if (nextTimestamp < 0) {
-      break;
-    }
-    timestamp = nextTimestamp;
-    year = year + 1;
-  }
-
-  const daysByMonth =
-    year % 4 === 0
-      ? [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-      : [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-
-  let month = 0;
-  for (let i = 0; i < daysByMonth.length; i++) {
-    let msInThisMonth = daysToMs(daysByMonth[i]);
-    if (timestamp > msInThisMonth) {
-      timestamp = timestamp - msInThisMonth;
-    } else {
-      month = i + 1;
-      break;
-    }
-  }
-  let date = Math.ceil(timestamp / daysToMs(1));
-  timestamp = timestamp - daysToMs(date - 1);
-  let hours = Math.floor(timestamp / hoursToMs(1));
-  timestamp = timestamp - hoursToMs(hours);
-  let minutes = Math.floor(timestamp / minToMs(1));
-  timestamp = timestamp - minToMs(minutes);
-  let sec = Math.floor(timestamp / secToMs(1));
-
-  return (
-    year +
-    '-' +
-    format(month) +
-    '-' +
-    format(date) +
-    'T' +
-    format(hours) +
-    ':' +
-    format(minutes) +
-    ':' +
-    format(sec) +
-    '+00:00'
-  );
 }
 
 function determinateIsLoggingEnabled() {
