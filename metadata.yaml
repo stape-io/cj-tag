@@ -1,4 +1,6 @@
 homepage: "https://stape.io/"
 versions:
+  - sha: 542825eb705c9f2d784a5863ed654dda8c538bae
+    changeNotes: Update item preferences.
   - sha: d2723fc085e2e65e2b008bbaddea1d39470a0450
     changeNotes: Initial release.
