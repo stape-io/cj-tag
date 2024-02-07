@@ -156,56 +156,60 @@ ___TEMPLATE_PARAMETERS___
         "groupStyle": "ZIPPY_CLOSED",
         "subParams": [
           {
-            "type": "TEXT",
-            "name": "itemIdKey",
-            "displayName": "Item SKU Key",
-            "simpleValueType": true,
-            "help": "Key of item obj, which will be used to read value for ITEMx",
-            "valueValidators": [
+            "type": "SIMPLE_TABLE",
+            "name": "itemKeys",
+            "displayName": "",
+            "simpleTableColumns": [
               {
-                "type": "NON_EMPTY"
+                "defaultValue": "item_id",
+                "displayName": "Property Name",
+                "name": "key",
+                "type": "SELECT",
+                "selectItems": [
+                  {
+                    "value": "item_id",
+                    "displayValue": "Item ID"
+                  },
+                  {
+                    "value": "price",
+                    "displayValue": "Item Price"
+                  },
+                  {
+                    "value": "quantity",
+                    "displayValue": "Item Quantity"
+                  },
+                  {
+                    "value": "discount",
+                    "displayValue": "Item Discount"
+                  }
+                ],
+                "isUnique": true,
+                "valueValidators": [
+                  {
+                    "type": "NON_EMPTY"
+                  }
+                ]
+              },
+              {
+                "defaultValue": "",
+                "displayName": "Value",
+                "name": "value",
+                "type": "TEXT",
+                "isUnique": false,
+                "valueValidators": [
+                  {
+                    "type": "NON_EMPTY"
+                  }
+                ]
               }
-            ],
-            "defaultValue": "id"
-          },
+            ]
+          }
+        ],
+        "enablingConditions": [
           {
-            "type": "TEXT",
-            "name": "itemPriceKey",
-            "displayName": "Item Price Key",
-            "simpleValueType": true,
-            "help": "Key of item obj, which will be used to read value for AMTx",
-            "valueValidators": [
-              {
-                "type": "NON_EMPTY"
-              }
-            ],
-            "defaultValue": "price"
-          },
-          {
-            "type": "TEXT",
-            "name": "itemQuantityKey",
-            "displayName": "Item Quantity Key",
-            "simpleValueType": true,
-            "help": "Key of item obj, which will be used to read value for QTYx",
-            "valueValidators": [
-              {
-                "type": "NON_EMPTY"
-              }
-            ],
-            "defaultValue": "quantity"
-          },
-          {
-            "type": "TEXT",
-            "name": "itemDiscountKey",
-            "displayName": "Item Discount Key",
-            "simpleValueType": true,
-            "help": "Key of item obj, which will be used to read value for DCNTx",
-            "valueValidators": [
-              {
-                "type": "NON_EMPTY"
-              }
-            ],
-            "defaultValue": "discount"
+            "paramName": "items",
+            "paramValue": "",
+            "type": "PRESENT"
           }
         ]
       }
@@ -268,10 +272,9 @@ const getCookieValues = require('getCookieValues');
 const getAllEventData = require('getAllEventData');
 const logToConsole = require('logToConsole');
 const getContainerVersion = require('getContainerVersion');
-const getTimestampMillis = require('getTimestampMillis');
 const makeString = require('makeString');
 const getType = require('getType');
-const Math = require('Math');
+const makeTableMap = require('makeTableMap');
 
 const containerVersion = getContainerVersion();
 const isDebug = containerVersion.debugMode;
@@ -387,12 +390,13 @@ function getRequestUrl() {
   // CJ ITEMx, AMTx, QTYx, DCNTx
   const items = data.items || eventData.items || [];
   if (getType(items) === 'array') {
-    const itemIdKey = data.itemIdKey || 'id';
-    const itemPriceKey = data.itemPriceKey || 'price';
-    const itemQuantityKey = data.itemQuantityKey || 'quantity';
-    const itemDiscountKey = data.itemDiscountKey || 'discount';
+    const itemKeys = makeTableMap(data.itemKeys || [], 'key', 'value') || {};
+    const itemIdKey = itemKeys.item_id || 'item_id';
+    const itemPriceKey = data.price || 'price';
+    const itemQuantityKey = data.quantity || 'quantity';
+    const itemDiscountKey = data.discount || 'discount';
     items
-      .filter((item) => item && item.id)
+      .filter((item) => item && item[itemIdKey])
       .forEach((item, index) => {
         const x = index + 1;
         requestUrl = requestUrl + '&ITEM' + x + '=' + enc(item[itemIdKey]);

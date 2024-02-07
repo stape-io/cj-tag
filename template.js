@@ -8,10 +8,9 @@ const getCookieValues = require('getCookieValues');
 const getAllEventData = require('getAllEventData');
 const logToConsole = require('logToConsole');
 const getContainerVersion = require('getContainerVersion');
-const getTimestampMillis = require('getTimestampMillis');
 const makeString = require('makeString');
 const getType = require('getType');
-const Math = require('Math');
+const makeTableMap = require('makeTableMap');
 
 const containerVersion = getContainerVersion();
 const isDebug = containerVersion.debugMode;
@@ -127,12 +126,13 @@ function getRequestUrl() {
   // CJ ITEMx, AMTx, QTYx, DCNTx
   const items = data.items || eventData.items || [];
   if (getType(items) === 'array') {
-    const itemIdKey = data.itemIdKey || 'id';
-    const itemPriceKey = data.itemPriceKey || 'price';
-    const itemQuantityKey = data.itemQuantityKey || 'quantity';
-    const itemDiscountKey = data.itemDiscountKey || 'discount';
+    const itemKeys = makeTableMap(data.itemKeys || [], 'key', 'value') || {};
+    const itemIdKey = itemKeys.item_id || 'item_id';
+    const itemPriceKey = data.price || 'price';
+    const itemQuantityKey = data.quantity || 'quantity';
+    const itemDiscountKey = data.discount || 'discount';
     items
-      .filter((item) => item && item.id)
+      .filter((item) => item && item[itemIdKey])
       .forEach((item, index) => {
         const x = index + 1;
         requestUrl = requestUrl + '&ITEM' + x + '=' + enc(item[itemIdKey]);
