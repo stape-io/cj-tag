@@ -145,6 +145,13 @@ ___TEMPLATE_PARAMETERS___
             "simpleValueType": true,
             "help": "Provide an array of conversion items",
             "notSetText": "Parse from eventData"
+          },
+          {
+            "type": "TEXT",
+            "name": "amount",
+            "displayName": "Subtotal Amount",
+            "simpleValueType": true,
+            "help": "Applies to non-retail advertisers (those who don’t have cart items)"
           }
         ],
         "help": "By default, all parameters will be parsed from eventData"
@@ -294,7 +301,7 @@ if (data.type === 'page_view') {
         path: '/',
         secure: true,
         httpOnly: false,
-        expiration: 86400 * 395
+        'max-age': 86400 * 395
       };
 
       setCookie('cje', value, options, false);
@@ -413,6 +420,10 @@ function getRequestUrl() {
   if (customerStatus) {
     requestUrl = requestUrl + '&CUST_STATUS=' + enc(customerStatus);
   }
+  if (data.amount) {
+    requestUrl = requestUrl + '&amount=' + enc(data.amount);
+  }
+  requestUrl = requestUrl + '&trackingSource=stapeio';
   return requestUrl;
 }
 
