@@ -1,5 +1,7 @@
 homepage: "https://stape.io/"
 versions:
+  - sha: ec5a3a51caa6b56944b0065ff33524f07e5c72de
+    changeNotes: Added amount support for non-retail advertisers.
   - sha: 542825eb705c9f2d784a5863ed654dda8c538bae
     changeNotes: Update item preferences.
   - sha: d2723fc085e2e65e2b008bbaddea1d39470a0450
