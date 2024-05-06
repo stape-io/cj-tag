@@ -26,6 +26,7 @@ Also, you can override values of the following parameters which will be parsed f
 
 ### Useful links:
 
+- https://stape.io/blog/cj-server-to-server-tracking-using-sever-google-tag-manager
 
 ## Open Source
 
