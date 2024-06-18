@@ -18,6 +18,10 @@ const isLoggingEnabled = determinateIsLoggingEnabled();
 const traceId = getRequestHeader('trace-id');
 const eventData = getAllEventData();
 
+if (!isConsentGivenOrNotRequired()) {
+  return data.gtmOnSuccess();
+}
+
 if (data.type === 'page_view') {
   const url = eventData.page_location || getRequestHeader('referer');
 
@@ -175,4 +179,11 @@ function determinateIsLoggingEnabled() {
   }
 
   return data.logType === 'always';
+}
+
+function isConsentGivenOrNotRequired() {
+  if (data.adStorageConsent !== 'required') return true;
+  if (eventData.consent_state) return !!eventData.consent_state.ad_storage;
+  const xGaGcs = eventData['x-ga-gcs'] || ''; // x-ga-gcs is a string like "G110"
+  return xGaGcs[2] === '1';
 }

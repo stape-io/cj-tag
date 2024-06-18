@@ -231,6 +231,31 @@ ___TEMPLATE_PARAMETERS___
   },
   {
     "type": "GROUP",
+    "name": "consentSettingsGroup",
+    "displayName": "Consent Settings",
+    "groupStyle": "ZIPPY_CLOSED",
+    "subParams": [
+      {
+        "type": "RADIO",
+        "name": "adStorageConsent",
+        "displayName": "",
+        "radioItems": [
+          {
+            "value": "optional",
+            "displayValue": "Send data always"
+          },
+          {
+            "value": "required",
+            "displayValue": "Send data in case marketing consent given"
+          }
+        ],
+        "simpleValueType": true,
+        "defaultValue": "optional"
+      }
+    ]
+  },
+  {
+    "type": "GROUP",
     "name": "logsGroup",
     "displayName": "Logs Settings",
     "groupStyle": "ZIPPY_CLOSED",
@@ -288,6 +313,10 @@ const isDebug = containerVersion.debugMode;
 const isLoggingEnabled = determinateIsLoggingEnabled();
 const traceId = getRequestHeader('trace-id');
 const eventData = getAllEventData();
+
+if (!isConsentGivenOrNotRequired()) {
+  return data.gtmOnSuccess();
+}
 
 if (data.type === 'page_view') {
   const url = eventData.page_location || getRequestHeader('referer');
@@ -446,6 +475,13 @@ function determinateIsLoggingEnabled() {
   }
 
   return data.logType === 'always';
+}
+
+function isConsentGivenOrNotRequired() {
+  if (data.adStorageConsent !== 'required') return true;
+  if (eventData.consent_state) return !!eventData.consent_state.ad_storage;
+  const xGaGcs = eventData['x-ga-gcs'] || ''; // x-ga-gcs is a string like "G110"
+  return xGaGcs[2] === '1';
 }
 
 
