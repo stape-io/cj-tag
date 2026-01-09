@@ -1,5 +1,8 @@
-homepage: "https://stape.io/"
+homepage: 'https://stape.io/'
+documentation: 'https://github.com/stape-io/cj-tag'
 versions:
+  - sha: 3fec4f88e5965a35c0cebbf82b04c65b0af7a429
+    changeNotes: Fixed UI parameter.
   - sha: 757411d2f7bdbaf671d0c320c9edf8b2beac7fed
     changeNotes: Added consent section.
   - sha: ec5a3a51caa6b56944b0065ff33524f07e5c72de
