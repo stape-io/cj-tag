@@ -1,21 +1,22 @@
-﻿const sendHttpRequest = require('sendHttpRequest');
-const setCookie = require('setCookie');
-const parseUrl = require('parseUrl');
-const JSON = require('JSON');
-const getRequestHeader = require('getRequestHeader');
+﻿const BigQuery = require('BigQuery');
 const encodeUriComponent = require('encodeUriComponent');
-const getCookieValues = require('getCookieValues');
 const getAllEventData = require('getAllEventData');
-const logToConsole = require('logToConsole');
 const getContainerVersion = require('getContainerVersion');
-const makeString = require('makeString');
+const getCookieValues = require('getCookieValues');
+const getRequestHeader = require('getRequestHeader');
+const getTimestampMillis = require('getTimestampMillis');
 const getType = require('getType');
+const JSON = require('JSON');
+const logToConsole = require('logToConsole');
+const makeString = require('makeString');
 const makeTableMap = require('makeTableMap');
+const parseUrl = require('parseUrl');
+const sendHttpRequest = require('sendHttpRequest');
+const setCookie = require('setCookie');
 
-const containerVersion = getContainerVersion();
-const isDebug = containerVersion.debugMode;
-const isLoggingEnabled = determinateIsLoggingEnabled();
-const traceId = getRequestHeader('trace-id');
+/*==============================================================================
+==============================================================================*/
+
 const eventData = getAllEventData();
 
 if (!isConsentGivenOrNotRequired()) {
@@ -41,49 +42,48 @@ if (data.type === 'page_view') {
     }
   }
 
-  data.gtmOnSuccess();
+  return data.gtmOnSuccess();
 } else {
   const requestUrl = getRequestUrl();
 
-  if (isLoggingEnabled) {
-    logToConsole(
-      JSON.stringify({
-        Name: 'CJ',
-        Type: 'Request',
-        TraceId: traceId,
-        EventName: 'Conversion',
-        RequestMethod: 'GET',
-        RequestUrl: requestUrl
-      })
-    );
-  }
+  log({
+    Name: 'CJ',
+    Type: 'Request',
+    EventName: 'Conversion',
+    RequestMethod: 'GET',
+    RequestUrl: requestUrl
+  });
 
   sendHttpRequest(
     requestUrl,
     (statusCode, headers, body) => {
-      if (isLoggingEnabled) {
-        logToConsole(
-          JSON.stringify({
-            Name: 'CJ',
-            Type: 'Response',
-            TraceId: traceId,
-            EventName: 'Conversion',
-            ResponseStatusCode: statusCode,
-            ResponseHeaders: headers,
-            ResponseBody: body
-          })
-        );
-      }
-
-      if (statusCode >= 200 && statusCode < 300) {
-        data.gtmOnSuccess();
-      } else {
-        data.gtmOnFailure();
+      log({
+        Name: 'CJ',
+        Type: 'Response',
+        EventName: 'Conversion',
+        ResponseStatusCode: statusCode,
+        ResponseHeaders: headers,
+        ResponseBody: body
+      });
+      if (!data.useOptimisticScenario) {
+        if (statusCode >= 200 && statusCode < 300) {
+          data.gtmOnSuccess();
+        } else {
+          data.gtmOnFailure();
+        }
       }
     },
     { method: 'GET' }
   );
+
+  if (data.useOptimisticScenario) {
+    return data.gtmOnSuccess();
+  }
 }
+
+/*==============================================================================
+VENDOR RELATED FUNCTIONS
+==============================================================================*/
 
 function getRequestUrl() {
   // CJ assigned ID for your program
@@ -104,16 +104,12 @@ function getRequestUrl() {
   }
   // CJ order ID
   const orderId =
-    data.orderId ||
-    eventData.orderId ||
-    eventData.order_id ||
-    eventData.transaction_id;
+    data.orderId || eventData.orderId || eventData.order_id || eventData.transaction_id;
   if (orderId) {
     requestUrl = requestUrl + '&OID=' + enc(orderId);
   }
   // CJ currency
-  const currency =
-    data.currencyCode || eventData.currencyCode || eventData.currency;
+  const currency = data.currencyCode || eventData.currencyCode || eventData.currency;
   if (currency) {
     requestUrl = requestUrl + '&CURRENCY=' + enc(currency);
   }
@@ -140,12 +136,9 @@ function getRequestUrl() {
       .forEach((item, index) => {
         const x = index + 1;
         requestUrl = requestUrl + '&ITEM' + x + '=' + enc(item[itemIdKey]);
-        requestUrl =
-          requestUrl + '&AMT' + x + '=' + enc(item[itemPriceKey] || 0);
-        requestUrl =
-          requestUrl + '&QTY' + x + '=' + enc(item[itemQuantityKey] || 1);
-        requestUrl =
-          requestUrl + '&DCNT' + x + '=' + enc(item[itemDiscountKey] || 0);
+        requestUrl = requestUrl + '&AMT' + x + '=' + enc(item[itemPriceKey] || 0);
+        requestUrl = requestUrl + '&QTY' + x + '=' + enc(item[itemQuantityKey] || 1);
+        requestUrl = requestUrl + '&DCNT' + x + '=' + enc(item[itemDiscountKey] || 0);
       });
   }
   // CJ customer status
@@ -160,12 +153,81 @@ function getRequestUrl() {
   return requestUrl;
 }
 
+/*==============================================================================
+HELPERS
+==============================================================================*/
+
 function enc(data) {
-  data = data || '';
+  if (['null', 'undefined'].indexOf(getType(data)) !== -1) data = '';
   return encodeUriComponent(makeString(data));
 }
 
+function log(rawDataToLog) {
+  const logDestinationsHandlers = {};
+  if (determinateIsLoggingEnabled()) logDestinationsHandlers.console = logConsole;
+  if (determinateIsLoggingEnabledForBigQuery()) logDestinationsHandlers.bigQuery = logToBigQuery;
+
+  rawDataToLog.TraceId = getRequestHeader('trace-id');
+
+  const keyMappings = {
+    // No transformation for Console is needed.
+    bigQuery: {
+      Name: 'tag_name',
+      Type: 'type',
+      TraceId: 'trace_id',
+      EventName: 'event_name',
+      RequestMethod: 'request_method',
+      RequestUrl: 'request_url',
+      RequestBody: 'request_body',
+      ResponseStatusCode: 'response_status_code',
+      ResponseHeaders: 'response_headers',
+      ResponseBody: 'response_body'
+    }
+  };
+
+  for (const logDestination in logDestinationsHandlers) {
+    const handler = logDestinationsHandlers[logDestination];
+    if (!handler) continue;
+
+    const mapping = keyMappings[logDestination];
+    const dataToLog = mapping ? {} : rawDataToLog;
+
+    if (mapping) {
+      for (const key in rawDataToLog) {
+        const mappedKey = mapping[key] || key;
+        dataToLog[mappedKey] = rawDataToLog[key];
+      }
+    }
+
+    handler(dataToLog);
+  }
+}
+
+function logConsole(dataToLog) {
+  logToConsole(JSON.stringify(dataToLog));
+}
+
+function logToBigQuery(dataToLog) {
+  const connectionInfo = {
+    projectId: data.logBigQueryProjectId,
+    datasetId: data.logBigQueryDatasetId,
+    tableId: data.logBigQueryTableId
+  };
+  dataToLog.timestamp = getTimestampMillis();
+
+  ['request_body', 'response_headers', 'response_body'].forEach((p) => {
+    dataToLog[p] = JSON.stringify(dataToLog[p]);
+  });
+  BigQuery.insert(connectionInfo, [dataToLog], { ignoreUnknownValues: true });
+}
+
 function determinateIsLoggingEnabled() {
+  const containerVersion = getContainerVersion();
+  const isDebug = !!(
+    containerVersion &&
+    (containerVersion.debugMode || containerVersion.previewMode)
+  );
+
   if (!data.logType) {
     return isDebug;
   }
@@ -179,6 +241,11 @@ function determinateIsLoggingEnabled() {
   }
 
   return data.logType === 'always';
+}
+
+function determinateIsLoggingEnabledForBigQuery() {
+  if (data.bigQueryLogType === 'no') return false;
+  return data.bigQueryLogType === 'always';
 }
 
 function isConsentGivenOrNotRequired() {
