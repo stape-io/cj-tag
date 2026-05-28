@@ -9,7 +9,7 @@ There are two types of events that CJ tag includes: PageView and Conversion.
 
 **Pageview** - add the CJ tag to the pageview event.
 
-**Conversion events** 
+**Conversion events**
 
 Required parameters:
 - **CID** - CJ assigned ID for your program
@@ -24,7 +24,7 @@ Also, you can override values of the following parameters which will be parsed f
 - **Items**
 
 
-### Useful links:
+### Useful Resources
 
 - https://stape.io/blog/cj-server-to-server-tracking-using-sever-google-tag-manager
 
